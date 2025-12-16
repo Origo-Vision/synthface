@@ -23,6 +23,11 @@ Playground for synthetic face/people detection.
 > python explore.py 10 --datadir training-data/
 ```
 
+## Train with using default settings.
+```shell
+> python train.py --datadir-train training-data/ --datadir-valid validation-data/
+```
+
 ## Play (inference) with samples from the training or validation data
 ```shell
 > python play.py 10 --datadir validation-data/ --model save/save_0.42.pth 

@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 
 from dataset import SynthDataset, augmentations
 import model
+from scheduler import Scheduler
 import utils
 
 
@@ -33,7 +34,11 @@ def main(options: argparse.Namespace) -> None:
     net = model.empty().to(device)
     print(f"Number of network parameters={utils.count_parameters(net)}")
 
-    optimizer = torch.optim.Adam(net.parameters(), lr=1e-03)
+    scheduler = Scheduler(
+        lr=options.learning_rate, annealing=options.scheduler, epochs=options.epochs
+    )
+
+    optimizer = torch.optim.AdamW(net.parameters(), lr=options.learning_rate, weight_decay=1e-05)
     loss_fn = torch.nn.BCELoss()
 
     min_loss = 100.0
@@ -89,8 +94,12 @@ def main(options: argparse.Namespace) -> None:
         print(f"\r  avg valid loss={avg_valid_loss:.7f}")
 
         if avg_valid_loss < min_loss:
-            model.save(net, pathlib.Path("save.pth"))
+            model.save(net, pathlib.Path("snapshot.pth"))
             min_loss = avg_valid_loss
+            print(f"==> Save model with current lowest validation loss={min_loss:.5f}")
+
+        scheduler.step()
+        optimizer.param_groups[0]["lr"] = scheduler.learning_rate()
 
 
 if __name__ == "__main__":
@@ -113,8 +122,24 @@ if __name__ == "__main__":
         required=True,
         help="Validation dataset directory",
     )
-    parser.add_argument("--batch-size", type=int, default=4, help="The batch size")
-    parser.add_argument("--epochs", type=int, default=30, help="The number of epochs")
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        choices=[1, 2, 4, 8, 16],
+        default=4,
+        help="The batch size",
+    )
+    parser.add_argument("--epochs", type=int, default=100, help="The number of epochs")
+    parser.add_argument(
+        "--learning-rate", type=float, default=1e-3, help="The learning rate"
+    )
+    parser.add_argument(
+        "--scheduler",
+        type=str,
+        choices=("cosine", "linear", "none"),
+        default="cosine",
+        help="The scheduling function",
+    )
     options = parser.parse_args()
 
     utils.set_seed(options.seed)
