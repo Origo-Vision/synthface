@@ -209,4 +209,5 @@ __marimo__/
 snapshot.pth
 training-data/
 validation-data/
+runs/
 *.zip

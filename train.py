@@ -1,16 +1,22 @@
 import argparse
 import pathlib
-import random
+import time
 
 import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 
 from dataset import SynthDataset, augmentations
 import model
 from scheduler import Scheduler
 import utils
+
+def get_run_id(options: argparse.Namespace) -> str:
+    t = str(time.time()).split(".")[0]
+    run_id = f"run-{options.scheduler}-e{options.epochs}-b{options.batch_size}-t{t}"
+    return run_id
 
 
 def main(options: argparse.Namespace) -> None:
@@ -30,6 +36,11 @@ def main(options: argparse.Namespace) -> None:
     valid_loader = DataLoader(
         valid_dataset, batch_size=options.batch_size, shuffle=False
     )
+
+    run_id = get_run_id(options)
+    print(f"Current run id='{run_id}'")
+
+    writer = SummaryWriter(f"runs/{run_id}")
 
     net = model.empty().to(device)
     print(f"Number of network parameters={utils.count_parameters(net)}")
@@ -93,6 +104,10 @@ def main(options: argparse.Namespace) -> None:
         avg_valid_loss = accum_valid_loss / num_valid_batches
         print(f"\r  avg valid loss={avg_valid_loss:.7f}")
 
+        writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], epoch)
+        writer.add_scalar("charts/avg_train_loss", avg_train_loss, epoch)
+        writer.add_scalar("charts/avg_valid_loss", avg_valid_loss, epoch)
+
         if avg_valid_loss < min_loss:
             model.save(net, pathlib.Path("snapshot.pth"))
             min_loss = avg_valid_loss
@@ -101,6 +116,8 @@ def main(options: argparse.Namespace) -> None:
         scheduler.step()
         optimizer.param_groups[0]["lr"] = scheduler.learning_rate()
 
+    # We're done.
+    writer.close()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
