@@ -30,10 +30,10 @@ Playground for synthetic face/people detection.
 
 ## Play (inference) with samples from the training or validation data
 ```shell
-> python play.py 10 --datadir validation-data/ --model save/save_0.42.pth 
+> python play.py 10 --datadir validation-data/ --model save/snapshot-0.04.pth
 ```
 
 ## Live inference using web camera
 ```shell
-> python live.py 1 --model save/save_0.42.pth 
+> python live.py 0 --model save/snapshot-0.04.pth 
 ```
