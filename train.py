@@ -53,9 +53,12 @@ def main(options: argparse.Namespace) -> None:
 
     min_loss = 100.0
 
+    validation_state = utils.get_all_rng_states()
+
     for epoch in range(options.epochs):
         print(f"epoch {epoch+1:4d}/{options.epochs:4d}")
 
+        # Training part.
         print("Training ...")
         net.train()
 
@@ -78,10 +81,15 @@ def main(options: argparse.Namespace) -> None:
             accum_train_loss += loss.item()
 
         avg_train_loss = accum_train_loss / num_train_batches
-        print(f"\r  avg train loss={avg_train_loss:.7f}")
+        print(f"  avg train loss={avg_train_loss:.7f}")
 
+        # Validation part.
         print("Validation ...")
         net.eval()
+
+        # Save the training state, and set the validation set.
+        training_state = utils.get_all_rng_states()
+        utils.set_all_rng_states(validation_state)
 
         num_valid_batches = len(valid_loader)
         accum_valid_loss = 0.0
@@ -101,7 +109,10 @@ def main(options: argparse.Namespace) -> None:
                 accum_valid_loss += loss.item()
 
         avg_valid_loss = accum_valid_loss / num_valid_batches
-        print(f"\r  avg valid loss={avg_valid_loss:.7f}")
+        print(f"  avg valid loss={avg_valid_loss:.7f}")
+
+        # Restore the more stocastic training state.
+        utils.set_all_rng_states(training_state)
 
         writer.add_scalar(
             "charts/learning_rate", optimizer.param_groups[0]["lr"], epoch
