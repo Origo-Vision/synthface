@@ -9,15 +9,24 @@ import torch
 from torch.utils.data import Dataset
 from torchvision.transforms import Compose, v2
 
-import utils
 
-def augmentations() -> Compose:
+def appearance() -> Compose:
     return Compose(
         [
-            v2.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.1, hue=0.0),
+            v2.ColorJitter(brightness=0.15, contrast=0.3, saturation=0.1, hue=0.1),
+            v2.RandomGrayscale(p=0.05),
             v2.GaussianBlur(kernel_size=3, sigma=(0.1, 2)),
-            v2.GaussianNoise(sigma=0.03),
             v2.RandomPosterize(bits=6),
+            v2.JPEG(quality=(40, 100)),
+        ]
+    )
+
+
+def warping() -> Compose:
+    return Compose(
+        [
+            v2.RandomHorizontalFlip(p=0.5),
+            v2.RandomResizedCrop(size=512, scale=(0.6, 1.0)),
         ]
     )
 
@@ -26,11 +35,13 @@ class SynthDataset(Dataset):
     def __init__(
         self: SynthDataset,
         datadir: pathlib.Path,
-        augmentations: Compose = Compose([]),
+        appearance: Compose = appearance(),
+        warping: Compose = warping(),
     ) -> None:
         super().__init__()
 
-        self.augmentations = augmentations
+        self.appearance = appearance
+        self.warping = warping
 
         self.images = list(map(pathlib.Path, sorted(glob.glob(str(datadir / "*.png")))))
         self.masks = list(map(pathlib.Path, sorted(glob.glob(str(datadir / "*.npy")))))
@@ -42,9 +53,23 @@ class SynthDataset(Dataset):
         self: SynthDataset, index: int
     ) -> tuple[torch.Tensor, torch.Tensor]:
         image = cv.imread(str(self.images[index]), cv.IMREAD_COLOR_RGB)
-        image = utils.numpy_to_tensor(image)
+        image = torch.tensor(image.transpose(2, 0, 1), dtype=torch.uint8)
+
+        # Apply appearance transformations on uint8.
+        image = self.appearance(image)
+        image = image.to(torch.float32) / 255.0
+
+        # Apply slight noise on float32.
+        image = v2.functional.gaussian_noise(image, sigma=0.01)
 
         mask = np.load(self.masks[index])
         mask = torch.tensor(mask, dtype=torch.float32).unsqueeze(0)
 
-        return self.augmentations(image), mask
+        # Apply warping on both the image and the mask.
+        rng_state = torch.get_rng_state()
+        image = self.warping(image)
+
+        torch.set_rng_state(rng_state)
+        mask = self.warping(mask)
+
+        return image, mask

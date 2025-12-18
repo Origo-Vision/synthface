@@ -8,10 +8,11 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-from dataset import SynthDataset, augmentations
+from dataset import SynthDataset
 import model
 from scheduler import Scheduler
 import utils
+
 
 def get_run_id(options: argparse.Namespace) -> str:
     t = str(time.time()).split(".")[0]
@@ -23,16 +24,12 @@ def main(options: argparse.Namespace) -> None:
     device = utils.find_device(options.force_cpu)
     print(f"Device={device}")
 
-    train_dataset = SynthDataset(
-        datadir=options.datadir_train, augmentations=augmentations()
-    )
+    train_dataset = SynthDataset(datadir=options.datadir_train)
     train_loader = DataLoader(
         train_dataset, batch_size=options.batch_size, shuffle=True
     )
 
-    valid_dataset = SynthDataset(
-        datadir=options.datadir_valid, augmentations=augmentations()
-    )
+    valid_dataset = SynthDataset(datadir=options.datadir_valid)
     valid_loader = DataLoader(
         valid_dataset, batch_size=options.batch_size, shuffle=False
     )
@@ -49,7 +46,9 @@ def main(options: argparse.Namespace) -> None:
         lr=options.learning_rate, annealing=options.scheduler, epochs=options.epochs
     )
 
-    optimizer = torch.optim.AdamW(net.parameters(), lr=options.learning_rate, weight_decay=1e-05)
+    optimizer = torch.optim.AdamW(
+        net.parameters(), lr=options.learning_rate, weight_decay=1e-05
+    )
     loss_fn = torch.nn.BCELoss()
 
     min_loss = 100.0
@@ -104,7 +103,9 @@ def main(options: argparse.Namespace) -> None:
         avg_valid_loss = accum_valid_loss / num_valid_batches
         print(f"\r  avg valid loss={avg_valid_loss:.7f}")
 
-        writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], epoch)
+        writer.add_scalar(
+            "charts/learning_rate", optimizer.param_groups[0]["lr"], epoch
+        )
         writer.add_scalar("charts/avg_train_loss", avg_train_loss, epoch)
         writer.add_scalar("charts/avg_valid_loss", avg_valid_loss, epoch)
 
@@ -118,6 +119,7 @@ def main(options: argparse.Namespace) -> None:
 
     # We're done.
     writer.close()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

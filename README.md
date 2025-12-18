@@ -5,7 +5,7 @@ Playground for synthetic face/people detection.
 ```shell
 > python -m venv env
 > source env/bin/activate
-> python -m pip install requirements.txt
+> python -m pip install -r requirements.txt
 ```
 
 ## Download 1000 item dataset

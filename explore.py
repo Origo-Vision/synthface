@@ -5,11 +5,11 @@ import cv2 as cv
 from matplotlib import pyplot as plt
 import numpy as np
 
-from dataset import SynthDataset, augmentations
+from dataset import SynthDataset
 
 
 def main(options: argparse.Namespace) -> None:
-    data = SynthDataset(datadir=options.datadir, augmentations=augmentations())
+    data = SynthDataset(datadir=options.datadir)
 
     if options.imageindex >= len(data):
         print("Requested image index is too big")

@@ -207,7 +207,7 @@ marimo/_lsp/
 __marimo__/
 
 snapshot.pth
-training-data/
-validation-data/
+training-data*/
+validation-data*/
 runs/
 *.zip
